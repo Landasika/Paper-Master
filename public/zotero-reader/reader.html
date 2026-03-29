@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zotero PDF Reader</title>
+  <link href="reader.css" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #reader-ui, #split-view {
+      width: 100%;
+      height: 100%;
+    }
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 9999;
+    }
+    #loading.hidden {
+      display: none;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #2563eb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading indicator -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>正在加载 Zotero Reader...</p>
+  </div>
+
+  <!-- Reader containers -->
+  <div id="reader-ui"></div>
+  <div id="split-view">
+    <div id="primary-view" class="primary-view"></div>
+    <div id="secondary-view" class="secondary-view"></div>
+  </div>
+  <div id="printContainer"></div>
+
+  <!-- Scripts -->
+  <script src="reader.js"></script>
+
+  <script>
+    console.log('[Zotero Reader] HTML 加载完成');
+
+    let readerInstance = null;
+    let initAttempts = 0;
+    const MAX_INIT_ATTEMPTS = 50;
+
+    // 检查 reader.js 是否已加载
+    function checkReaderReady() {
+      initAttempts++;
+
+      if (typeof window.createReader === 'function') {
+        console.log('[Zotero Reader] ✅ reader.js 已就绪');
+        hideLoading();
+        setupMessageListener();
+        // 等待父窗口发送初始化消息
+      } else if (initAttempts < MAX_INIT_ATTEMPTS) {
+        console.log(`[Zotero Reader] ⏳ 等待 reader.js 加载... (${initAttempts}/${MAX_INIT_ATTEMPTS})`);
+        setTimeout(checkReaderReady, 100);
+      } else {
+        console.error('[Zotero Reader] ❌ reader.js 加载超时');
+        showError('Reader 加载失败，请刷新页面重试');
+      }
+    }
+
+    // 隐藏加载动画
+    function hideLoading() {
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.classList.add('hidden');
+      }
+    }
+
+    // 显示错误信息
+    function showError(message) {
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.innerHTML = `
+          <div style="color: #dc3545;">
+            <p style="font-size: 16px; margin-bottom: 10px;">❌ 加载失败</p>
+            <p style="font-size: 14px;">${message}</p>
+          </div>
+        `;
+      }
+    }
+
+    // 设置消息监听
+    function setupMessageListener() {
+      window.addEventListener('message', function(event) {
+        console.log('[Zotero Reader] 📨 收到消息:', event.data);
+
+        if (event.data.type === 'init') {
+          // 如果消息包含 data 字段，使用 data；否则使用整个消息
+          const config = event.data.data || event.data;
+          initReader(config);
+        }
+      });
+    }
+
+    // 从 URL 参数加载 PDF
+    function loadFromURLParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pdfUrl = urlParams.get('url');
+      const title = urlParams.get('title') || 'PDF Document';
+
+      if (pdfUrl) {
+        console.log('[Zotero Reader] 📄 从 URL 参数加载 PDF:', pdfUrl);
+        const config = {
+          url: pdfUrl,
+          title: title,
+          readOnly: false
+        };
+        initReader(config);
+        return true;
+      }
+      return false;
+    }
+
+    // 初始化 Reader
+    function initReader(config) {
+      console.log('[Zotero Reader] 🚀 开始初始化 Reader:', config);
+
+      if (readerInstance) {
+        console.warn('[Zotero Reader] ⚠️ Reader 已经初始化，跳过');
+        return;
+      }
+
+      if (typeof window.createReader !== 'function') {
+        console.error('[Zotero Reader] ❌ window.createReader 不存在');
+        showError('Reader 组件未正确加载');
+        return;
+      }
+
+      try {
+        // 设置 PDF.js worker 路径
+        if (typeof window.pdfjsLib !== 'undefined') {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/zotero-reader/pdf/build/pdf.worker.mjs';
+        }
+
+        // 本地化文件
+        const ftlFiles = [
+          'locales/en-US/reader.ftl',
+          'locales/en-US/zotero.ftl',
+          'locales/en-US/brand.ftl'
+        ];
+
+        console.log('[Zotero Reader] 🚀 初始化 Reader，使用 URL:', config.url);
+
+        readerInstance = window.createReader({
+              // 基础配置
+              type: 'pdf',
+              // 关键修复：PDF数据必须放在data对象里！
+              data: {
+                url: config.url
+              },
+              title: config.title || 'PDF Document',
+              readOnly: config.readOnly || false,
+              platform: 'web',
+
+              // UI 配置
+              sidebarOpen: true,
+              sidebarWidth: 240,
+              fontSize: 1,
+              showAnnotations: true,
+              textSelectionAnnotationMode: 'highlight',
+
+              // 主题
+              lightTheme: 'light',
+              darkTheme: 'dark',
+
+              // 必需的初始状态
+              annotations: [],
+              selectedAnnotationIDs: [],
+              filter: {
+                query: '',
+                colors: [],
+                tags: [],
+                authors: []
+              },
+
+              // 回调函数
+              onSaveAnnotations: function(annotations, callback) {
+                console.log('[Zotero Reader] 💾 保存注释:', annotations?.length || 0);
+                if (window.parent !== window) {
+                  window.parent.postMessage({
+                    type: 'onSaveAnnotations',
+                    annotations: annotations
+                  }, '*');
+                }
+                if (callback) callback();
+              },
+
+              onDeleteAnnotations: function(ids, callback) {
+                console.log('[Zotero Reader] 🗑️ 删除注释:', ids);
+                if (window.parent !== window) {
+                  window.parent.postMessage({
+                    type: 'onDeleteAnnotations',
+                    ids: ids
+                  }, '*');
+                }
+                if (callback) callback();
+              },
+
+              onOpenLink: function(params) {
+                console.log('[Zotero Reader] 🔗 打开链接:', params.url);
+                if (window.parent !== window) {
+                  window.parent.postMessage({
+                    type: 'onOpenLink',
+                    url: params.url
+                  }, '*');
+                }
+              },
+
+              onSetZoom: function(params) {
+                console.log('[Zotero Reader] 🔍 设置缩放:', params.zoom);
+                if (window.parent !== window) {
+                  window.parent.postMessage({
+                    type: 'onSetZoom',
+                    zoom: params.zoom
+                  }, '*');
+                }
+              },
+
+              onOpenContextMenu: function(params) {
+                console.log('[Zotero Reader] 打开上下文菜单');
+              },
+
+              onToggleSidebar: function() {
+                console.log('[Zotero Reader] 切换侧边栏');
+              },
+
+              onChangeSidebarWidth: function(width) {
+                console.log('[Zotero Reader] 侧边栏宽度:', width);
+              },
+
+              onChangeSidebarView: function(view) {
+                console.log('[Zotero Reader] 侧边栏视图:', view);
+              },
+
+              onChangeViewState: function(state) {
+                console.log('[Zotero Reader] 视图状态:', state);
+              },
+
+              // 本地化文件
+              ftl: ftlFiles
+            });
+
+        console.log('[Zotero Reader] ✅ 初始化成功');
+      } catch (error) {
+        console.error('[Zotero Reader] ❌ 初始化失败:', error);
+        showError('初始化失败: ' + error.message);
+      }
+    }
+
+    // 启动检查循环
+    window.addEventListener('DOMContentLoaded', function() {
+      console.log('[Zotero Reader] DOM 加载完成');
+      checkReaderReady();
+    });
+
+    // 备用：如果 DOMContentLoaded 已经过去
+    if (document.readyState === 'loading') {
+      console.log('[Zotero Reader] 等待 DOM 加载');
+    } else {
+      console.log('[Zotero Reader] DOM 已就绪');
+      checkReaderReady();
+    }
+
+    // 检查是否有 URL 参数，如果有则在 reader.js 加载后自动初始化
+    if (window.location.search && (window.location.search.includes('url=') || window.location.search.includes('pdf='))) {
+      console.log('[Zotero Reader] 检测到 URL 参数，准备自动加载');
+      window.addEventListener('load', function() {
+        setTimeout(() => {
+          if (!loadFromURLParams()) {
+            console.warn('[Zotero Reader] URL 参数加载失败，等待手动初始化');
+          }
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

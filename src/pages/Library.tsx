@@ -3,7 +3,6 @@ import { useZoteroData, useDataStore } from '../hooks/useDataStore';
 import { Button } from '../components/Button';
 import { Modal } from '../components/modals/Modal';
 import { ItemEditor } from './ItemEditor';
-import { PDFViewModal } from './PDFView';
 import { NoteView } from './NoteView';
 import { loadSampleData } from '../utils/sampleData';
 import type { Item } from '../core/data/Item';
@@ -141,12 +140,20 @@ export function Library() {
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [noteViewOpen, setNoteViewOpen] = useState(false);
   const [editingItemKey, setEditingItemKey] = useState<string | undefined>();
-  const [viewingAttachmentKey, setViewingAttachmentKey] = useState<string | undefined>();
   const [viewingNoteKey, setViewingNoteKey] = useState<string | undefined>();
   const [parentItemForNote, setParentItemForNote] = useState<string | undefined>();
   const [itemType, setItemType] = useState('book');
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // 多标签PDF管理（保留功能）
+  // @ts-expect-error - 保留用于未来多标签功能
+  const [openPDFs, setOpenPDFs] = useState<Array<{
+    attachmentKey: string;
+    title: string;
+    itemKey: string;
+  }>>([]);
+  const [activePDFKey, setActivePDFKey] = useState<string | undefined>();
 
   // 纯离线模式：只使用 IndexedDB
   const dataStore = useDataStore();
@@ -156,8 +163,15 @@ export function Library() {
   useEffect(() => {
     async function initSampleData() {
       if (dataStore && !loading && items.length === 0) {
-        const hasExistingData = await dataStore.get('item', 'SAMPLE1');
-        if (!hasExistingData) {
+        try {
+          const hasExistingData = await dataStore.get('item', 'SAMPLE1');
+          if (!hasExistingData) {
+            await loadSampleData(dataStore);
+            reload();
+          }
+        } catch (error) {
+          // 404错误说明数据不存在，正常情况，静默加载示例数据
+          console.log('[Library] 没有找到示例数据，开始加载...');
           await loadSampleData(dataStore);
           reload();
         }
@@ -222,31 +236,21 @@ export function Library() {
           });
 
           if (!uploadResponse.ok) {
-            console.error('文件上传失败:', file.name);
+            console.error('[Library] 文件上传失败:', file.name);
             continue;
           }
 
           const uploadResult = await uploadResponse.json();
           const uploadedFile = uploadResult.data;
-
-          // 2. 解析元数据并按照 Zotero 格式创建条目
           const metadata = uploadedFile.metadata || {};
-          const parsedTitle = metadata.title || parseTitleFromFilename(file.name);
-          const creators = parseCreators(metadata.author, metadata.text);
-          const year = parseYear(metadata.creationDate || metadata.text);
-          const publicationInfo = parsePublicationInfo(metadata.text);
 
-          const newItem = {
-            itemType: 'journalArticle',
-            title: parsedTitle,
-            creators: creators,
-            publicationTitle: publicationInfo.journal,
-            volume: publicationInfo.volume,
-            issue: publicationInfo.issue,
-            pages: publicationInfo.pages,
-            date: year,
-            DOI: publicationInfo.doi,
-            abstractNote: metadata.subject || parseAbstract(metadata.text),
+          // 2. 立即创建基本条目（快速响应）
+          const basicTitle = metadata.title || parseTitleFromFilename(file.name);
+          const basicItem = {
+            itemType: 'book',
+            title: basicTitle,
+            creators: parseCreators(metadata.author, metadata.text),
+            date: parseYear(metadata.creationDate || metadata.text),
             dateAdded: new Date().toISOString(),
             dateModified: new Date().toISOString(),
             attachments: [{
@@ -262,16 +266,76 @@ export function Library() {
             }]
           };
 
-          await dataStore?.save('item', newItem, [file]);
-          console.log('[Library] 自动创建条目:', parsedTitle, `作者: ${creators.map(c => c.lastName).join(', ')}`);
+          // 立即保存基本条目
+          const savedItem = await dataStore?.save('item', basicItem);
+          console.log('[Library] ✅ 快速创建条目:', basicTitle);
+
+          // 3. 后台异步查询完整元数据（不阻塞UI）
+          if (metadata.title || metadata.doi) {
+            // 延迟执行，让UI先刷新
+            setTimeout(async () => {
+              try {
+                console.log('[Library] 🔄 后台查询元数据...');
+
+                // 重新解析完整元数据
+                let creators = [];
+                if (metadata.authors && metadata.authors.length > 0) {
+                  creators = metadata.authors.map((a: any) => ({
+                    creatorType: 'author',
+                    firstName: a.firstName || '',
+                    lastName: a.lastName || a.name || ''
+                  }));
+                } else {
+                  creators = parseCreators(metadata.author, metadata.text);
+                }
+
+                const publicationInfo = parsePublicationInfo(metadata.text);
+
+                // 构建完整条目
+                const enrichedItem = {
+                  ...savedItem,
+                  itemType: metadata.type === 'journal-article' ? 'journalArticle' : 'book',
+                  title: metadata.title || basicTitle,
+                  creators: creators,
+                  publicationTitle: metadata.publicationTitle || metadata.journal || publicationInfo.journal,
+                  volume: metadata.volume || publicationInfo.volume,
+                  issue: metadata.issue || publicationInfo.issue,
+                  pages: metadata.pages || publicationInfo.pages,
+                  date: metadata.year || parseYear(metadata.creationDate || metadata.text),
+                  DOI: metadata.doi || publicationInfo.doi,
+                  abstractNote: metadata.abstract || metadata.subject || parseAbstract(metadata.text),
+                  publisher: metadata.publisher || '',
+                  dateAdded: (savedItem as any).dateAdded || new Date().toISOString(),
+                  attachments: (savedItem as any).attachments || [],
+                  dateModified: new Date().toISOString()
+                };
+
+                // 更新条目
+                await dataStore?.save('item', enrichedItem);
+
+                console.log('[Library] ✨ 元数据更新完成:', {
+                  title: enrichedItem.title,
+                  authors: creators.map((c: any) => c.lastName).join(', '),
+                  source: metadata.onlineMatch ? '🌐 在线查询' : '📄 本地解析',
+                  publication: enrichedItem.publicationTitle || '(未知)'
+                });
+
+                // 刷新列表显示最新信息
+                reload();
+              } catch (error) {
+                console.error('[Library] ⚠️  后台元数据更新失败:', error);
+                // 失败也没关系，基本条目已经创建成功了
+              }
+            }, 100); // 100ms延迟，让UI先刷新
+          }
         }
 
-        // 3. 刷新列表
+        // 4. 立即刷新列表（显示基本条目）
         reload();
-        alert(`✅ 成功导入 ${pdfFiles.length} 个 PDF 文件`);
+        alert(`✅ 成功导入 ${pdfFiles.length} 个 PDF 文件\n（元数据正在后台查询中...）`);
       } catch (err) {
-        console.error('导入失败:', err);
-        alert('导入失败，请重试');
+        console.error('[Library] 导入失败:', err);
+        alert(`❌ 导入失败: ${(err as Error).message || '未知错误'}`);
       } finally {
         setUploading(false);
       }
@@ -346,9 +410,39 @@ export function Library() {
     setEditorOpen(true);
   };
 
-  const handleViewPDF = (attachmentKey: string) => {
-    setViewingAttachmentKey(attachmentKey);
+  // @ts-expect-error - 保留用于未来功能
+  const handleViewPDF = async (attachmentKey: string) => {
+    // 直接在新标签页打开 PDF
+    await openPDFInNewTab(attachmentKey);
+
+    // 显示提示
     setPdfViewerOpen(true);
+  };
+
+  // @ts-expect-error - 保留用于未来功能
+  const handleClosePDF = (attachmentKey: string) => {
+    // 关闭指定PDF标签
+    setOpenPDFs(prev => {
+      const newPDFs = prev.filter(pdf => pdf.attachmentKey !== attachmentKey);
+
+      // 如果关闭的是当前激活的PDF，切换到最后一个
+      if (activePDFKey === attachmentKey) {
+        if (newPDFs.length > 0) {
+          setActivePDFKey(newPDFs[newPDFs.length - 1].attachmentKey);
+        } else {
+          // 没有打开的PDF了，关闭查看器
+          setPdfViewerOpen(false);
+          setActivePDFKey(undefined);
+        }
+      }
+
+      return newPDFs;
+    });
+  };
+
+  // @ts-expect-error - 保留用于未来功能
+  const handleSwitchPDF = (attachmentKey: string) => {
+    setActivePDFKey(attachmentKey);
   };
 
   const handleCreateNote = (parentItemKey?: string) => {
@@ -407,11 +501,6 @@ export function Library() {
     reload();
   };
 
-  const handlePDFClose = () => {
-    setPdfViewerOpen(false);
-    setViewingAttachmentKey(undefined);
-  };
-
   const handleNoteClose = () => {
     setNoteViewOpen(false);
     setViewingNoteKey(undefined);
@@ -424,6 +513,51 @@ export function Library() {
     setViewingNoteKey(undefined);
     setParentItemForNote(undefined);
     reload();
+  };
+
+  // 辅助函数：在新标签页打开 PDF（使用 Zotero Reader + postMessage）
+  const openPDFInNewTab = async (attachmentKey: string) => {
+    if (!dataStore) return;
+
+    try {
+      const items = await dataStore.query('item');
+      for (const item of items || []) {
+        const typedItem = item as any;
+        if (typedItem.attachments && Array.isArray(typedItem.attachments)) {
+          const foundAttachment = typedItem.attachments.find((a: any) => a.key === attachmentKey);
+          if (foundAttachment) {
+            // 构建 PDF URL
+            let url = foundAttachment.url || foundAttachment.link || foundAttachment.path;
+            if (foundAttachment.filename && !url) {
+              url = `http://localhost:3001/uploads/${foundAttachment.filename}`;
+            }
+            if (url) {
+              const title = foundAttachment.title || foundAttachment.filename || 'PDF';
+              // 打开干净的 reader.html，不带参数
+              const readerUrl = `/zotero-reader/reader.html`;
+              const newWindow = window.open(readerUrl, '_blank');
+              console.log('[openPDFInNewTab] 打开 Zotero Reader');
+
+              // 等待新窗口加载完成后发送初始化消息
+              if (newWindow) {
+                setTimeout(() => {
+                  newWindow.postMessage({
+                    type: 'init',
+                    url: url,
+                    title: title,
+                    readOnly: false
+                  }, '*');
+                  console.log('[openPDFInNewTab] 发送初始化消息:', url);
+                }, 2000);
+              }
+            }
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[openPDFInNewTab] 打开 PDF 失败:', err);
+    }
   };
 
   return (
@@ -510,7 +644,7 @@ export function Library() {
             <ItemsPanel
               items={items}
               onEditItem={handleEditItem}
-              onViewPDF={handleViewPDF}
+              onOpenPDF={openPDFInNewTab}
               onEditNote={handleEditNote}
               onCreateNote={handleCreateNote}
               onDeleteItem={handleDeleteItem}
@@ -559,13 +693,49 @@ export function Library() {
             />
           </Modal>
 
-          {/* PDF Viewer Modal */}
-          {viewingAttachmentKey && (
-            <PDFViewModal
-              isOpen={pdfViewerOpen}
-              attachmentKey={viewingAttachmentKey}
-              onClose={handlePDFClose}
-            />
+          {/* PDF查看已改为新标签页打开，不需要显示在应用内 */}
+          {pdfViewerOpen && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{
+                background: 'white',
+                padding: '30px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+                <h2 style={{ fontSize: '20px', marginBottom: '8px' }}>PDF 已在新标签页打开</h2>
+                <p style={{ color: '#666', marginBottom: '20px' }}>请检查浏览器的新标签页</p>
+                <button
+                  onClick={() => {
+                    setOpenPDFs([]);
+                    setPdfViewerOpen(false);
+                    setActivePDFKey(undefined);
+                  }}
+                  style={{
+                    padding: '10px 24px',
+                    background: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Note View Modal */}
@@ -691,20 +861,96 @@ function TagsPanel({ tags }: { tags: any[] }) {
   );
 }
 
+// 在新标签页打开 PDF 的按钮组件
+// @ts-expect-error - 保留用于未来功能
+function OpenPDFButton({ attachmentKey }: { attachmentKey: string }) {
+  const dataStore = useDataStore();
+  const [attachment, setAttachment] = useState<any>(null);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+
+  useEffect(() => {
+    async function findAttachment() {
+      if (!dataStore || !attachmentKey) return;
+
+      try {
+        const items = await dataStore.query('item');
+        for (const item of items || []) {
+          const typedItem = item as any;
+          if (typedItem.attachments && Array.isArray(typedItem.attachments)) {
+            const foundAttachment = typedItem.attachments.find((a: any) => a.key === attachmentKey);
+            if (foundAttachment) {
+              setAttachment(foundAttachment);
+
+              // 构建 PDF URL
+              let url = foundAttachment.url || foundAttachment.link || foundAttachment.path;
+              if (foundAttachment.filename && !url) {
+                url = `http://localhost:3001/uploads/${foundAttachment.filename}`;
+              }
+              if (url) setPdfUrl(url);
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[OpenPDFButton] 查找 attachment 失败:', err);
+      }
+    }
+
+    findAttachment();
+  }, [dataStore, attachmentKey]);
+
+  const handleOpenPDF = () => {
+    if (pdfUrl) {
+      // 在新标签页打开 Zotero Reader
+      const readerUrl = `/zotero-reader/reader.html?url=${encodeURIComponent(pdfUrl)}&title=${encodeURIComponent(attachment?.title || attachment?.filename || 'PDF')}`;
+      window.open(readerUrl, '_blank');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleOpenPDF}
+      style={{
+        padding: '14px 28px',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '16px',
+        fontWeight: 600,
+        cursor: 'pointer',
+        transition: 'all 0.3s',
+        boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+      }}
+    >
+      📖 在新标签页打开 PDF
+    </button>
+  );
+}
+
 function ItemsPanel({
   items,
   onEditItem,
-  onViewPDF,
+  // @ts-expect-error - 保留用于未来功能
   onEditNote,
   onCreateNote,
-  onDeleteItem
+  onDeleteItem,
+  onOpenPDF
 }: {
   items: any[];
   onEditItem: (key: string) => void;
-  onViewPDF: (key: string) => void;
   onEditNote: (key: string) => void;
   onCreateNote: (key?: string) => void;
   onDeleteItem: (key: string) => void;
+  onOpenPDF: (attachmentKey: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -737,96 +983,97 @@ function ItemsPanel({
         </div>
       ) : (
         <div className="items-list">
-          {filteredItems.map((item) => (
-            <div
-              key={item.key}
-              className={`item-card ${item.itemType === 'note' ? 'item-card-note' : ''}`}
-              onClick={() => {
-                if (item.itemType === 'note') {
-                  onEditNote(item.key);
-                } else {
-                  onEditItem(item.key);
-                }
-              }}
-            >
-              <div className="item-title">
-                {item.itemType === 'note' ? (
-                  <span>📝 {item.note?.replace(/<[^>]+>/g, '').substring(0, 100) || 'Empty Note'}</span>
-                ) : (
-                  item.title || 'Untitled'
-                )}
+          {filteredItems.map((item) => {
+            // 查找 PDF 附件
+            const pdfAttachment = item.attachments?.find((att: any) =>
+              att.mimeType === 'application/pdf' ||
+              att.title?.endsWith('.pdf') ||
+              att.filename?.endsWith('.pdf')
+            );
+
+            return (
+              <div
+                key={item.key}
+                className={`item-row ${item.itemType === 'note' ? 'item-row-note' : ''}`}
+                onClick={() => onEditItem(item.key)}
+                title="单击编辑详情"
+              >
+              {/* 类型图标 */}
+              <div className="item-row-type">
+                {item.itemType === 'book' ? '📕' :
+                 item.itemType === 'journalArticle' ? '📄' :
+                 item.itemType === 'note' ? '📝' : '📄'}
               </div>
-              <div className="item-meta">
-                {item.creators && item.creators.length > 0 && (
-                  <span className="item-creators">
-                    {item.creators.map((c: any) =>
-                      `${c.firstName || ''} ${c.lastName || ''}`.trim()
-                    ).join(', ')}
-                  </span>
-                )}
-                {item.date && (
-                  <span className="item-date">{item.date}</span>
-                )}
-              </div>
-              {item.itemType && (
-                <div className="item-type">
-                  Type: {item.itemType}
+
+              {/* 条目内容 */}
+              <div className="item-row-content">
+                <div className="item-row-title">
+                  {item.itemType === 'note' ?
+                    (item.note?.replace(/<[^>]+>/g, '').substring(0, 100) || 'Empty Note') :
+                    (item.title || 'Untitled')
+                  }
                 </div>
-              )}
-              <div className="item-actions">
+
+                <div className="item-row-meta">
+                  {item.creators && item.creators.length > 0 && (
+                    <span className="item-row-authors">
+                      {item.creators.slice(0, 3).map((c: any) =>
+                        `${c.firstName || ''} ${c.lastName || ''}`.trim()
+                      ).join(', ')}
+                      {item.creators.length > 3 && ' et al.'}
+                    </span>
+                  )}
+
+                  {item.publicationTitle && (
+                    <span className="item-row-publication">{item.publicationTitle}</span>
+                  )}
+
+                  {item.date && (
+                    <span className="item-row-date">{item.date}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="item-row-actions">
                 <button
-                  className="item-action-btn"
+                  className="item-row-btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (item.itemType === 'note') {
-                      onEditNote(item.key);
-                    } else {
-                      onEditItem(item.key);
-                    }
+                    onCreateNote(item.key);
                   }}
-                  title={item.itemType === 'note' ? 'Edit note' : 'Edit item'}
+                  title="添加笔记"
                 >
-                  ✏️ {item.itemType === 'note' ? 'Edit Note' : 'Edit'}
+                  📝
                 </button>
-                {item.itemType === 'attachment' && item.linkType === 'embedded' && (
+                {pdfAttachment && (
                   <button
-                    className="item-action-btn"
+                    className="item-row-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onViewPDF(item.key);
+                      onOpenPDF(pdfAttachment.key);
                     }}
-                    title="View PDF"
+                    title="打开 PDF"
                   >
-                      📄 PDF
-                  </button>
-                )}
-                {item.itemType !== 'note' && item.itemType !== 'attachment' && (
-                  <button
-                    className="item-action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCreateNote(item.key);
-                    }}
-                    title="Add note"
-                  >
-                    📝 Add Note
+                    📖
                   </button>
                 )}
                 <button
-                  className="item-action-btn item-action-btn-danger"
+                  className="item-row-btn item-row-btn-danger"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (confirm(`确定要删除 "${item.title || 'this item'}" 吗？`)) {
                       onDeleteItem(item.key);
                     }
                   }}
-                  title="Delete item"
+                  title="删除"
                 >
-                  🗑️ Delete
+                  🗑️
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

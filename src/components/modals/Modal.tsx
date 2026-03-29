@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import classNames from 'classnames';
+import './Modal.css';
 
 interface ModalProps {
   isOpen: boolean;

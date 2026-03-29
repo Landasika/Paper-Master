@@ -10,12 +10,20 @@ const path = require('path');
 const fs = require('fs');
 const initSqlJs = require('sql.js');
 const pdfParse = require('pdf-parse');
+const { queryOnlineMetadata } = require('./metadata-api.cjs');
 
 const app = express();
 const PORT = 3001;
 
 let db;
 let dbFilePath = path.join(__dirname, 'zotero-data.db');
+
+// 辅助函数：从日期字符串提取年份
+function parseYear(dateStr) {
+  if (!dateStr) return '';
+  const yearMatch = dateStr.match(/(19|20)\d{2}/);
+  return yearMatch ? yearMatch[0] : '';
+}
 
 // 初始化数据库
 async function initDatabase() {
@@ -82,20 +90,24 @@ function saveDatabase() {
 // 初始化示例数据
 function initSampleData() {
   const stmt = db.prepare('INSERT INTO items (key, data, version, dateAdded, dateModified) VALUES (?, ?, ?, ?, ?)');
+
+  // 示例条目1 - The Pragmatic Programmer
   stmt.run([
-    'ITEM1',
+    'SAMPLE1',
     JSON.stringify({
       itemID: 1,
-      key: 'ITEM1',
+      key: 'SAMPLE1',
       itemType: 'book',
-      title: 'JavaScript高级程序设计',
+      title: 'The Pragmatic Programmer',
       creators: [
-        { creatorType: 'author', firstName: 'Nicholas', lastName: 'Zakas' }
+        { creatorType: 'author', firstName: 'Andrew', lastName: 'Hunt' },
+        { creatorType: 'author', firstName: 'David', lastName: 'Thomas' }
       ],
-      tags: ['编程', 'JavaScript'],
-      date: '2020',
-      publisher: '人民邮电出版社',
-      abstractNote: '本书深入探讨了JavaScript语言的核心概念',
+      abstractNote: 'Your journey to mastery in software development.',
+      edition: '1st',
+      publisher: 'Addison-Wesley',
+      date: '1999',
+      ISBN: '978-0201616224',
       dateAdded: '2024-01-01T00:00:00Z',
       dateModified: '2024-01-01T00:00:00Z',
       version: 1
@@ -104,15 +116,58 @@ function initSampleData() {
     '2024-01-01T00:00:00Z',
     '2024-01-01T00:00:00Z'
   ]);
+
+  // 示例条目2 - Deep Learning
+  stmt.run([
+    'SAMPLE2',
+    JSON.stringify({
+      itemID: 2,
+      key: 'SAMPLE2',
+      itemType: 'journalArticle',
+      title: 'Deep Learning',
+      creators: [
+        { creatorType: 'author', firstName: 'Yann', lastName: 'LeCun' },
+        { creatorType: 'author', firstName: 'Yoshua', lastName: 'Bengio' },
+        { creatorType: 'author', firstName: 'Geoffrey', lastName: 'Hinton' }
+      ],
+      publicationTitle: 'Nature',
+      volume: '521',
+      issue: '7553',
+      pages: '436-444',
+      date: '2015',
+      DOI: '10.1038/nature14539',
+      dateAdded: '2024-01-02T00:00:00Z',
+      dateModified: '2024-01-02T00:00:00Z',
+      version: 1
+    }),
+    1,
+    '2024-01-02T00:00:00Z',
+    '2024-01-02T00:00:00Z'
+  ]);
   stmt.free();
 
   const colStmt = db.prepare('INSERT INTO collections (key, data, version) VALUES (?, ?, ?)');
+
+  // 示例集合1 - Programming
   colStmt.run([
     'COLLECTION1',
     JSON.stringify({
       collectionID: 1,
       key: 'COLLECTION1',
-      name: '编程书籍',
+      name: 'Programming',
+      parentCollection: false,
+      version: 1
+    }),
+    1
+  ]);
+
+  // 示例集合2 - Machine Learning
+  colStmt.run([
+    'COLLECTION2',
+    JSON.stringify({
+      collectionID: 2,
+      key: 'COLLECTION2',
+      name: 'Machine Learning',
       parentCollection: false,
       version: 1
     }),
@@ -121,12 +176,13 @@ function initSampleData() {
   colStmt.free();
 
   const tagStmt = db.prepare('INSERT INTO tags (tag, type, count) VALUES (?, ?, ?)');
-  tagStmt.run(['编程', 0, 1]);
-  tagStmt.run(['JavaScript', 0, 1]);
+  tagStmt.run(['programming', 0, 1]);
+  tagStmt.run(['deep-learning', 0, 1]);
+  tagStmt.run(['ai', 0, 1]);
   tagStmt.free();
 
   saveDatabase();
-  console.log('[Server] 已初始化示例数据');
+  console.log('[Server] 已初始化示例数据 (SAMPLE1, SAMPLE2)');
 }
 
 // 从数据库加载数据
@@ -274,6 +330,45 @@ async function startServer() {
         });
       } catch (error) {
         console.error('[Server] PDF 元数据提取失败:', error.message);
+      }
+    }
+
+    // 尝试从在线API查询元数据（基于标题或DOI）
+    if (metadata.title || metadata.doi) {
+      try {
+        console.log('[Server] 尝试在线查询元数据...');
+        const onlineMetadata = await queryOnlineMetadata(metadata.title, metadata.doi, metadata.text);
+
+        if (onlineMetadata && Object.keys(onlineMetadata).length > 0) {
+          // 转换为Zotero格式的元数据
+          const zoteroMetadata = {
+            title: onlineMetadata.title || metadata.title,
+            authors: onlineMetadata.authors || [],
+            publicationTitle: onlineMetadata.publicationTitle || '',
+            journal: onlineMetadata.publicationTitle || onlineMetadata.journal || '',
+            volume: onlineMetadata.volume || '',
+            issue: onlineMetadata.issue || '',
+            pages: onlineMetadata.pages || '',
+            year: onlineMetadata.year ||
+                 (onlineMetadata.published?.dateParts?.[0] ? onlineMetadata.published.dateParts[0][0] : '') ||
+                 parseYear(metadata.creationDate),
+            doi: onlineMetadata.doi || metadata.doi || '',
+            abstract: onlineMetadata.abstract || metadata.subject || '',
+            type: onlineMetadata.type || 'journal-article',
+            publisher: onlineMetadata.publisher || '',
+            onlineMatch: true
+          };
+
+          // 合并元数据，优先使用在线数据
+          metadata = { ...metadata, ...zoteroMetadata };
+          console.log('[Server] ✅ 在线元数据查询成功:', {
+            title: zoteroMetadata.title,
+            authors: zoteroMetadata.authors.length,
+            source: zoteroMetadata.onlineMatch ? 'online' : 'local'
+          });
+        }
+      } catch (error) {
+        console.log('[Server] ⚠️  在线查询失败，使用本地解析:', error.message);
       }
     }
 
