@@ -15,7 +15,7 @@ export abstract class DataStore {
   }
 
   // Write operations
-  async save<T>(_type: string, _data: T | T[]): Promise<T | T[]> {
+  async save<T>(_type: string, _data: T | T[], _files?: File[]): Promise<T | T[]> {
     throw new Error('Method not implemented.');
   }
 

@@ -1,1 +1,0 @@
-export { ZoteroAPI } from './ZoteroAPI';

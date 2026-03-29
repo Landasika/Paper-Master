@@ -9,6 +9,132 @@ import { loadSampleData } from '../utils/sampleData';
 import type { Item } from '../core/data/Item';
 import './Library.css';
 
+// PDF 元数据解析函数
+function parseTitleFromFilename(filename: string): string {
+  return filename.replace(/\.pdf$/i, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseCreators(authorStr: string, text?: string): Array<{ creatorType: string; firstName: string; lastName: string }> {
+  const creators: Array<{ creatorType: string; firstName: string; lastName: string }> = [];
+
+  if (!authorStr && !text) return creators;
+
+  // 尝试从作者字段解析
+  if (authorStr) {
+    const authorList = authorStr.split(/,|;&/).map(a => a.trim()).filter(a => a);
+    authorList.forEach(author => {
+      const parts = author.split(/\s+/);
+      if (parts.length >= 2) {
+        creators.push({
+          creatorType: 'author',
+          firstName: parts.slice(0, -1).join(' '),
+          lastName: parts[parts.length - 1]
+        });
+      } else if (parts.length === 1) {
+        creators.push({
+          creatorType: 'author',
+          firstName: '',
+          lastName: parts[0]
+        });
+      }
+    });
+  }
+
+  // 如果没有找到作者，尝试从文本中提取（常见格式：Author et al.）
+  if (creators.length === 0 && text) {
+    const authorMatch = text.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+et\s+al/i);
+    if (authorMatch) {
+      const parts = authorMatch[1].split(/\s+/);
+      creators.push({
+        creatorType: 'author',
+        firstName: parts.slice(0, -1).join(' '),
+        lastName: parts[parts.length - 1]
+      });
+    }
+  }
+
+  return creators.slice(0, 10); // 最多10个作者
+}
+
+function parseYear(dateStr: string, text?: string): string {
+  // 尝试从日期字符串提取年份
+  if (dateStr) {
+    const yearMatch = dateStr.match(/(19|20)\d{2}/);
+    if (yearMatch) return yearMatch[0];
+  }
+
+  // 尝试从文本中提取年份（常见格式：© 2024, 2024 IEEE）
+  if (text) {
+    const yearMatch = text.match(/\b(19|20)\d{2}\b/);
+    if (yearMatch) return yearMatch[0];
+  }
+
+  return new Date().getFullYear().toString();
+}
+
+function parsePublicationInfo(text?: string): {
+  journal?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  doi?: string;
+} {
+  const info: any = {};
+
+  if (text) {
+    // 提取期刊名（常见格式）
+    const journalPatterns = [
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)(?:\s+Journal|,\s+Vol|,\s+No)/,
+      /(?:in\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+Journal)?)/i
+    ];
+
+    for (const pattern of journalPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        info.journal = match[1].trim();
+        break;
+      }
+    }
+
+    // 提取卷号和期号
+    const volIssueMatch = text.match(/Vol\.?\s*(\d+)(?:\s*,\s*No\.?\s*(\d+))?/i);
+    if (volIssueMatch) {
+      info.volume = volIssueMatch[1];
+      if (volIssueMatch[2]) info.issue = volIssueMatch[2];
+    }
+
+    // 提取页码
+    const pagesMatch = text.match(/pp?\.\s*(\d+(?:-\d+)?)/i);
+    if (pagesMatch) {
+      info.pages = pagesMatch[1];
+    }
+
+    // 提取 DOI
+    const doiMatch = text.match(/DOI\s+:\s*(10\.\d+\/[^\s,]+)/i);
+    if (doiMatch) {
+      info.doi = doiMatch[1];
+    }
+  }
+
+  return info;
+}
+
+function parseAbstract(text?: string): string {
+  if (!text) return '';
+
+  // 尝试提取摘要（通常在 Abstract 或 Summary 后）
+  const abstractMatch = text.match(/(?:Abstract|Summary)\s*:\s*([^\n]+(?:\n[^\n]+){0,5})/i);
+  if (abstractMatch) {
+    return abstractMatch[1].trim().substring(0, 500);
+  }
+
+  return '';
+}
+
+
 export function Library() {
   const [showSettings, setShowSettings] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -19,6 +145,8 @@ export function Library() {
   const [viewingNoteKey, setViewingNoteKey] = useState<string | undefined>();
   const [parentItemForNote, setParentItemForNote] = useState<string | undefined>();
   const [itemType, setItemType] = useState('book');
+  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // 纯离线模式：只使用 IndexedDB
   const dataStore = useDataStore();
@@ -45,6 +173,108 @@ export function Library() {
     } catch (err) {
       console.error('Sync failed:', err);
       alert('Sync failed. Please try again.');
+    }
+  };
+
+  // 处理文件拖拽
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      // 只在真正离开拖拽区域时取消
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+      if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+        setDragActive(false);
+      }
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      const pdfFiles = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+
+      if (pdfFiles.length === 0) {
+        alert('请拖拽 PDF 文件');
+        return;
+      }
+
+      setUploading(true);
+
+      try {
+        // 处理每个 PDF 文件
+        for (const file of pdfFiles) {
+          // 1. 上传文件
+          const formData = new FormData();
+          formData.append('file', file);
+
+          const uploadResponse = await fetch('http://localhost:3001/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!uploadResponse.ok) {
+            console.error('文件上传失败:', file.name);
+            continue;
+          }
+
+          const uploadResult = await uploadResponse.json();
+          const uploadedFile = uploadResult.data;
+
+          // 2. 解析元数据并按照 Zotero 格式创建条目
+          const metadata = uploadedFile.metadata || {};
+          const parsedTitle = metadata.title || parseTitleFromFilename(file.name);
+          const creators = parseCreators(metadata.author, metadata.text);
+          const year = parseYear(metadata.creationDate || metadata.text);
+          const publicationInfo = parsePublicationInfo(metadata.text);
+
+          const newItem = {
+            itemType: 'journalArticle',
+            title: parsedTitle,
+            creators: creators,
+            publicationTitle: publicationInfo.journal,
+            volume: publicationInfo.volume,
+            issue: publicationInfo.issue,
+            pages: publicationInfo.pages,
+            date: year,
+            DOI: publicationInfo.doi,
+            abstractNote: metadata.subject || parseAbstract(metadata.text),
+            dateAdded: new Date().toISOString(),
+            dateModified: new Date().toISOString(),
+            attachments: [{
+              key: `ATTACH_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+              itemType: 'attachment',
+              linkType: 'linked_file',
+              title: file.name,
+              url: `http://localhost:3001${uploadedFile.url}`,
+              filename: uploadedFile.filename,
+              size: uploadedFile.size,
+              mimeType: uploadedFile.mimeType,
+              dateAdded: new Date().toISOString()
+            }]
+          };
+
+          await dataStore?.save('item', newItem, [file]);
+          console.log('[Library] 自动创建条目:', parsedTitle, `作者: ${creators.map(c => c.lastName).join(', ')}`);
+        }
+
+        // 3. 刷新列表
+        reload();
+        alert(`✅ 成功导入 ${pdfFiles.length} 个 PDF 文件`);
+      } catch (err) {
+        console.error('导入失败:', err);
+        alert('导入失败，请重试');
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
@@ -133,6 +363,39 @@ export function Library() {
     setNoteViewOpen(true);
   };
 
+  const handleDeleteItem = async (itemKey: string) => {
+    try {
+      // 获取条目信息以便删除关联的文件
+      const item = items.find(i => i.key === itemKey);
+      if (item?.attachments) {
+        // 删除关联的 PDF 文件
+        for (const attachment of item.attachments) {
+          if (attachment.filename) {
+            try {
+              await fetch(`http://localhost:3001/api/upload/${attachment.filename}`, {
+                method: 'DELETE'
+              });
+              console.log('[Library] 已删除文件:', attachment.filename);
+            } catch (err) {
+              console.error('[Library] 删除文件失败:', attachment.filename, err);
+            }
+          }
+        }
+      }
+
+      // 删除条目
+      await dataStore?.delete('item', itemKey);
+      console.log('[Library] 已删除条目:', itemKey);
+
+      // 刷新列表
+      reload();
+      alert('✅ 删除成功');
+    } catch (err) {
+      console.error('[Library] 删除失败:', err);
+      alert('删除失败，请重试');
+    }
+  };
+
   const handleEditorClose = () => {
     setEditorOpen(false);
     setEditingItemKey(undefined);
@@ -164,7 +427,13 @@ export function Library() {
   };
 
   return (
-    <div className="library">
+    <div
+      className={`library ${dragActive ? 'drag-active' : ''}`}
+      onDragEnter={handleDrag}
+      onDragLeave={handleDrag}
+      onDragOver={handleDrag}
+      onDrop={handleDrop}
+    >
       <header className="library-header">
         <h1>Paper-Master</h1>
         <div className="library-actions">
@@ -244,10 +513,30 @@ export function Library() {
               onViewPDF={handleViewPDF}
               onEditNote={handleEditNote}
               onCreateNote={handleCreateNote}
+              onDeleteItem={handleDeleteItem}
             />
           )}
 
           {loading && <div className="loading">Loading...</div>}
+
+          {dragActive && (
+            <div className="drag-overlay">
+              <div className="drag-overlay-content">
+                <div className="drag-icon">📄</div>
+                <h2>释放以导入 PDF</h2>
+                <p>将自动创建条目并上传文件</p>
+              </div>
+            </div>
+          )}
+
+          {uploading && (
+            <div className="uploading-overlay">
+              <div className="uploading-content">
+                <div className="spinner"></div>
+                <p>正在导入 PDF...</p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="error">
@@ -407,13 +696,15 @@ function ItemsPanel({
   onEditItem,
   onViewPDF,
   onEditNote,
-  onCreateNote
+  onCreateNote,
+  onDeleteItem
 }: {
   items: any[];
   onEditItem: (key: string) => void;
   onViewPDF: (key: string) => void;
   onEditNote: (key: string) => void;
   onCreateNote: (key?: string) => void;
+  onDeleteItem: (key: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -521,6 +812,18 @@ function ItemsPanel({
                     📝 Add Note
                   </button>
                 )}
+                <button
+                  className="item-action-btn item-action-btn-danger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`确定要删除 "${item.title || 'this item'}" 吗？`)) {
+                      onDeleteItem(item.key);
+                    }
+                  }}
+                  title="Delete item"
+                >
+                  🗑️ Delete
+                </button>
               </div>
             </div>
           ))}

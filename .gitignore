@@ -1,31 +1,43 @@
 # Dependencies
 node_modules/
+package-lock.json
 
-# Build outputs
+# Build output
 dist/
-build/
-*.log
 
-# Editor directories and files
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Uploaded files
+public/uploads/*
+!public/uploads/.gitkeep
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Environment variables
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
 .env
 .env.local
-.env.*.local
 
-# Debug files
-debug.log
-*.debug.log
-
-# Test coverage
-coverage/
-
-# Temporary files
-*.tmp
-.cache/
+# Server
+.dev-server.pid
+.backend-server.pid

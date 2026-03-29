@@ -56,6 +56,11 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
       setSaving(true);
       setError(null);
 
+      // 保存到数据存储（包括文件上传）
+      if (dataStore) {
+        await dataStore.save('item', itemData, files);
+      }
+
       if (onSave) {
         await onSave(itemData, files);
       }
@@ -65,7 +70,9 @@ export const ItemEditor: React.FC<ItemEditorProps> = ({
       }
     } catch (err) {
       console.error('Failed to save item:', err);
-      setError('保存条目失败，请重试。');
+      setError(`保存失败: ${err instanceof Error ? err.message : '未知错误'}`);
+      setSaving(false);
+      throw err; // 重新抛出错误，让 ItemForm 知道保存失败
     } finally {
       setSaving(false);
     }

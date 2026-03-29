@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useDataStore } from '../hooks/useDataStore';
-import { PDFViewer } from '../components/pdf/PDFViewer';
 import { Modal } from '../components/modals/Modal';
 import './PDFView.css';
 
@@ -61,15 +60,46 @@ export const PDFView: React.FC<PDFViewProps> = ({ attachmentKey, onClose }) => {
 
   // Construct PDF URL
   // Zotero API provides direct links to attachments
-  const pdfUrl = attachment.url || attachment.link || '';
+  // 优先使用 url，其次使用 link，最后尝试构建路径
+  let pdfUrl = '';
+
+  if (attachment.url) {
+    pdfUrl = attachment.url;
+  } else if (attachment.link) {
+    pdfUrl = attachment.link;
+  } else if (attachment.path) {
+    // 如果有本地路径，尝试转换为 URL
+    pdfUrl = attachment.path;
+  } else if (attachment.filename) {
+    // 如果只有文件名，尝试从服务器构建 URL
+    pdfUrl = `http://localhost:3001/uploads/${attachment.filename}`;
+  }
+
+  // 如果没有找到 URL，显示错误
+  if (!pdfUrl) {
+    return (
+      <div className="pdf-view-error">
+        <p>❌ 无法找到 PDF 文件</p>
+        <p>Attachment: {JSON.stringify(attachment, null, 2)}</p>
+        {onClose && <button onClick={onClose}>Close</button>}
+      </div>
+    );
+  }
 
   return (
     <div className="pdf-view-container">
-      <PDFViewer
-        url={pdfUrl}
-        title={attachment.title || attachment.name}
-        onClose={onClose}
-      />
+      {pdfUrl ? (
+        <iframe
+          src={pdfUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          title={attachment.title || attachment.name || 'PDF 预览'}
+        />
+      ) : (
+        <div className="pdf-view-error">
+          <p>❌ PDF URL 为空</p>
+          {onClose && <button onClick={onClose}>Close</button>}
+        </div>
+      )}
     </div>
   );
 };

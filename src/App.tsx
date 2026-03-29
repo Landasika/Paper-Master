@@ -1,8 +1,8 @@
-import { ZoteroLibrary } from './pages/ZoteroLibrary';
+import { Library } from './pages/Library';
 import './App.css';
 
 function App() {
-  return <ZoteroLibrary />;
+  return <Library />;
 }
 
 export default App;

@@ -81,25 +81,68 @@ export class ServerStore {
     }
   }
 
-  async save<T>(_type: string, data: T | T[]): Promise<T | T[]> {
+  async save<T>(_type: string, data: T | T[], files?: File[]): Promise<T | T[]> {
     this.ensureReady();
 
     const dataArray = Array.isArray(data) ? data : [data];
     const results = [];
 
     for (const item of dataArray) {
+      // 先上传文件（如果有）
+      let itemWithAttachments = { ...item };
+
+      if (files && files.length > 0) {
+        const uploadPromises = files.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+
+          const response = await fetch(`${this.baseURL}/api/upload`, {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error(`文件上传失败: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          return result.data;
+        });
+
+        const uploadedFiles = await Promise.all(uploadPromises);
+
+        // 将上传的文件信息添加到条目中
+        const attachments = uploadedFiles.map((file: any) => ({
+          key: `ATTACH_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          itemType: 'attachment',
+          linkType: 'linked_file',
+          title: file.originalName,
+          url: `${this.baseURL}${file.url}`,
+          filename: file.filename,
+          size: file.size,
+          mimeType: file.mimeType,
+          dateAdded: new Date().toISOString()
+        }));
+
+        itemWithAttachments = {
+          ...itemWithAttachments,
+          attachments
+        };
+      }
+
+      // 保存条目元数据
       let result;
       if ((item as any).key) {
         // 更新现有条目
         result = await this.request<T>(`/items/${(item as any).key}`, {
           method: 'PUT',
-          body: JSON.stringify(item)
+          body: JSON.stringify(itemWithAttachments)
         });
       } else {
         // 创建新条目
         result = await this.request<T>(`/items`, {
           method: 'POST',
-          body: JSON.stringify(item)
+          body: JSON.stringify(itemWithAttachments)
         });
       }
       results.push(result);

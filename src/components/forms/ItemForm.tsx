@@ -2,12 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '../Button';
 import { FieldInput } from './FieldInput';
 import { CreatorEditor } from './CreatorEditor';
-import { FileUploader } from '../FileUploader';
 import type { Creator } from './CreatorEditor';
 import { getFieldsForItemType, getItemTypeOptions } from '../../config/itemTypes';
 import type { Item } from '../../core/data/Item';
 import './ItemForm.css';
-import '../FileUploader.css';
 
 interface ItemFormProps {
   item?: Partial<Item>;
@@ -87,7 +85,15 @@ export const ItemForm: React.FC<ItemFormProps> = ({
 
   const handleFilesSelected = useCallback((files: File[]) => {
     setAttachments(prev => [...prev, ...files]);
-  }, []);
+
+    // 自动提取文件名作为标题
+    if (files.length > 0 && !item.title) {
+      const firstFileName = files[0].name;
+      // 移除扩展名
+      const title = firstFileName.replace(/\.(pdf|ps)$/i, '');
+      updateField('title', title);
+    }
+  }, [item.title, updateField]);
 
   const handleRemoveAttachment = useCallback((index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
@@ -96,18 +102,26 @@ export const ItemForm: React.FC<ItemFormProps> = ({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Validate required fields
-    required.forEach(field => {
-      const value = item[field.name as keyof Item];
-      if (!value || (typeof value === 'string' && !value.trim())) {
-        newErrors[field.name] = `${field.label} is required`;
+    // 如果有附件，标题就是必需的（自动从文件名提取）
+    if (attachments.length > 0) {
+      const title = item.title || attachments[0].name.replace(/\.(pdf|ps)$/i, '');
+      if (!title) {
+        newErrors.title = '标题不能为空';
       }
-    });
+    } else {
+      // 没有附件时，正常验证必填字段
+      required.forEach(field => {
+        const value = item[field.name as keyof Item];
+        if (!value || (typeof value === 'string' && !value.trim())) {
+          newErrors[field.name] = `${field.label} is required`;
+        }
+      });
 
-    // Special validation for creators
-    if (itemType === 'book' || itemType === 'journalArticle') {
-      if (!item.creators || item.creators.length === 0) {
-        newErrors.creators = 'At least one author is required';
+      // Special validation for creators
+      if (itemType === 'book' || itemType === 'journalArticle') {
+        if (!item.creators || item.creators.length === 0) {
+          newErrors.creators = 'At least one author is required';
+        }
       }
     }
 
@@ -118,20 +132,25 @@ export const ItemForm: React.FC<ItemFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 如果有附件但没有标题，自动从文件名提取
+    let finalItem = { ...item };
+    if (attachments.length > 0 && !finalItem.title) {
+      const firstFileName = attachments[0].name;
+      finalItem = {
+        ...finalItem,
+        title: firstFileName.replace(/\.(pdf|ps)$/i, '')
+      };
+    }
+
     if (validate()) {
       // Update dateModified
       const itemToSave = {
-        ...item,
-        dateModified: new Date().toISOString(),
-        attachments: attachments.map(f => ({
-          name: f.name,
-          size: f.size,
-          type: f.type
-        }))
+        ...finalItem,
+        dateModified: new Date().toISOString()
       };
 
       if (onSave) {
-        // 传递实际的File对象
+        // 传递实际的File对象给数据存储
         onSave(itemToSave, attachments.length > 0 ? attachments : undefined);
       }
     } else {
@@ -251,13 +270,29 @@ export const ItemForm: React.FC<ItemFormProps> = ({
 
       {/* File Attachments */}
       <div className="form-section">
-        <h3>文件附件</h3>
-        <FileUploader
-          onFilesSelected={handleFilesSelected}
-          accept=".pdf,.ps,.doc,.docx"
+        <h3>
+          📄 拖拽 PDF 文件到下方
+          {attachments.length > 0 && (
+            <span className="upload-success"> ✓ 已选择 {attachments.length} 个文件</span>
+          )}
+        </h3>
+        <input
+          type="file"
+          accept=".pdf,.ps"
           multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            handleFilesSelected(files);
+          }}
           disabled={disabled}
+          style={{ marginBottom: '1rem' }}
         />
+
+        {attachments.length > 0 && (
+          <div className="quick-save-hint">
+            💡 提示：文件名会自动用作标题，可以直接点击"保存"按钮
+          </div>
+        )}
 
         {attachments.length > 0 && (
           <div className="file-uploader-list">
@@ -304,7 +339,7 @@ export const ItemForm: React.FC<ItemFormProps> = ({
             loading={loading}
             disabled={loading}
           >
-            {item.key ? 'Save Changes' : 'Create Item'}
+            {attachments.length > 0 ? '💾 保存条目' : (item.key ? 'Save Changes' : 'Create Item')}
           </Button>
         </div>
       )}

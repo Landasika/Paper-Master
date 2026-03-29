@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ServerStore } from '../core/stores';
-import { HybridStore } from '../core/stores/HybridStore';
 import type { DataStore } from '../core/stores/DataStore';
 
 /**
@@ -112,11 +111,6 @@ export function useSync(dataStore: DataStore | null) {
     try {
       const result = await dataStore.sync(lastSync);
       setLastSync(result.libraryVersion);
-
-      if (dataStore instanceof HybridStore) {
-        const status = await dataStore.getSyncStatus();
-        setSyncStatus(status);
-      }
     } catch (error) {
       console.error('[useSync] Sync failed:', error);
       throw error;
