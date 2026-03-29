@@ -10,12 +10,13 @@ dist/
 npm-debug.log*
 .backend-server.log
 .dev-server.log
-.dev-server.pid
 
 # Runtime data
 *.pid
 *.seed
 *.pid.lock
+.dev-server.pid
+.backend-server.pid
 
 # Database
 *.db
@@ -23,10 +24,12 @@ npm-debug.log*
 *.db-wal
 zotero-data.db
 
-# Uploaded files
-public/uploads/*
+# Uploaded files - DO NOT COMMIT PDF FILES!
+public/uploads/*.pdf
+public/sample.pdf
+
+# Keep directory structure
 !public/uploads/.gitkeep
-!public/uploads/pdf-*
 
 # IDE
 .vscode/
