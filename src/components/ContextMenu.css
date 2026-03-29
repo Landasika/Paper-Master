@@ -1,0 +1,119 @@
+/*
+ * Context Menu Styles
+ * 完全匹配Zotero桌面版右键菜单样式
+ */
+
+.context-menu {
+  background: white;
+  border: 1px solid #c0c0c0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 200px;
+  max-width: 300px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  user-select: none;
+}
+
+.context-menu-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: var(--material-text-primary, #212121);
+  transition: background 0.1s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.context-menu-item:hover:not(.disabled) {
+  background: var(--material-selected, rgba(102, 126, 234, 0.1));
+}
+
+.context-menu-item.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.context-menu-item-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.context-menu-icon {
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.context-menu-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-menu-shortcut {
+  font-size: 11px;
+  color: var(--material-text-secondary, #757575);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.context-menu-arrow {
+  font-size: 10px;
+  color: var(--material-text-secondary, #757575);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--material-divider, #e0e0e0);
+  margin: 4px 0;
+}
+
+.context-menu-submenu {
+  background: white;
+  border: 1px solid #c0c0c0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+/* 子菜单箭头动画 */
+.context-menu-item.has-submenu .context-menu-arrow {
+  transition: transform 0.2s ease;
+}
+
+.context-menu-item.has-submenu:hover .context-menu-arrow {
+  transform: rotate(90deg);
+}
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: high) {
+  .context-menu {
+    border: 2px solid #000;
+  }
+
+  .context-menu-item:hover:not(.disabled) {
+    background: #000;
+    color: #fff;
+  }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+  .context-menu-item {
+    transition: none;
+  }
+
+  .context-menu-item.has-submenu .context-menu-arrow {
+    transition: none;
+  }
+}

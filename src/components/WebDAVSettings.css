@@ -1,0 +1,301 @@
+.webdav-settings {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.webdav-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.webdav-header h2 {
+  font-size: 24px;
+  color: #2c3e50;
+  margin: 0 0 10px 0;
+}
+
+.webdav-subtitle {
+  color: #7f8c8d;
+  font-size: 14px;
+  margin: 0;
+}
+
+.webdav-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
+
+.webdav-section {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.webdav-section:last-of-type {
+  border-bottom: none;
+}
+
+.webdav-section h3 {
+  font-size: 18px;
+  color: #34495e;
+  margin: 0 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #3498db;
+}
+
+.webdav-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-item label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.form-input {
+  padding: 10px;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-input:disabled {
+  background-color: #ecf0f1;
+  cursor: not-allowed;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-primary {
+  background-color: #3498db;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.btn-secondary {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #7f8c8d;
+}
+
+.btn-danger {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c0392b;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.webdav-status {
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.webdav-status.success {
+  background-color: #d5f4e6;
+  border: 1px solid #27ae60;
+}
+
+.webdav-status h3 {
+  margin: 0 0 10px 0;
+  color: #27ae60;
+}
+
+.status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-item {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #2c3e50;
+  min-width: 80px;
+}
+
+.info-value {
+  color: #7f8c8d;
+  word-break: break-all;
+}
+
+.file-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ecf0f1;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+}
+
+.file-item {
+  padding: 12px;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-item:hover {
+  background-color: #e9ecef;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #2c3e50;
+  word-break: break-all;
+}
+
+.file-info {
+  font-size: 12px;
+  color: #7f8c8d;
+}
+
+.webdav-help {
+  font-size: 14px;
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
+.webdav-help p {
+  margin: 10px 0;
+}
+
+.webdav-help strong {
+  color: #2c3e50;
+}
+
+.webdav-help ul,
+.webdav-help ol {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.webdav-help li {
+  margin: 5px 0;
+}
+
+.webdav-help code {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #e74c3c;
+}
+
+.status-message {
+  padding: 15px;
+  border-radius: 4px;
+  margin: 20px 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.status-message.idle {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  color: #6c757d;
+}
+
+.status-message.testing {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+}
+
+.status-message.success {
+  background-color: #d4edda;
+  border: 1px solid #28a745;
+  color: #155724;
+}
+
+.status-message.error {
+  background-color: #f8d7da;
+  border: 1px solid #dc3545;
+  color: #721c24;
+}
+
+/* 滚动条样式 */
+.file-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.file-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.file-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.file-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

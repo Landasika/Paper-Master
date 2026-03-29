@@ -1,0 +1,176 @@
+/*
+ * CollectionTree Styles
+ * 完全匹配Zotero桌面版集合树样式
+ */
+
+.collection-tree {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.collection-tree.empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-message {
+  color: #999;
+  padding: 2rem;
+  text-align: center;
+}
+
+.collection-tree-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 集合行样式 - 匹配桌面版 */
+.collection-row {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s ease;
+  border-bottom: 1px solid transparent;
+  position: relative;
+  min-height: 24px;
+  height: 24px;
+  line-height: 24px;
+  pointer-events: auto;
+}
+
+.collection-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.collection-row.selected {
+  background: var(--material-selected);
+  color: var(--material-primary);
+}
+
+.collection-row.selected .collection-name {
+  color: var(--material-primary);
+  font-weight: 500;
+}
+
+.collection-row.hovered:not(.selected) {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Twisty (展开/收起箭头) - 匹配桌面版 */
+.twisty {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 2px;
+  transition: transform 0.2s;
+  font-size: 14px;
+  color: var(--material-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  z-index: 10;
+  position: relative;
+  pointer-events: auto !important;
+}
+
+.twisty.open {
+  transform: rotate(90deg);
+}
+
+.twisty.closed {
+  transform: rotate(0deg);
+}
+
+.collection-row.selected .twisty {
+  color: var(--material-primary);
+}
+
+.spacer {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+/* 集合图标 - 匹配桌面版 */
+.collection-icon {
+  margin-right: 4px;
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+/* 集合名称 - 匹配桌面版 */
+.collection-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--material-text-primary);
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.collection-row.selected .collection-name {
+  color: var(--material-primary);
+}
+
+/* 集合数量 - 匹配桌面版 */
+.collection-count {
+  font-size: 11px;
+  color: var(--material-text-secondary);
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.collection-row.selected .collection-count {
+  color: var(--material-primary);
+}
+
+/* 滚动条样式 */
+/* 滚动条样式 - 匹配桌面版 */
+.collection-tree-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.collection-tree-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collection-tree-content::-webkit-scrollbar-thumb {
+  background: var(--material-text-secondary);
+  border-radius: 4px;
+  opacity: 0.5;
+}
+
+.collection-tree-content::-webkit-scrollbar-thumb:hover {
+  background: var(--material-text-primary);
+  opacity: 0.7;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .collection-tree {
+    font-size: 12px;
+  }
+
+  .collection-row {
+    padding: 4px 6px;
+    min-height: 24px;
+  }
+
+  .collection-count {
+    display: none;
+  }
+}

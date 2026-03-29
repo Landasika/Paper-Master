@@ -1,0 +1,287 @@
+/*
+ * Toolbar Styles
+ * 完全匹配Zotero桌面版工具栏样式
+ */
+
+.zotero-toolbar-complete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--material-toolbar);
+  color: var(--material-text-primary);
+  border-bottom: 1px solid var(--material-divider);
+  gap: 8px;
+  height: var(--height-toolbar);
+  min-height: var(--height-toolbar);
+}
+
+/* 左侧按钮组 - 匹配桌面版 */
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.new-item-group {
+  position: relative;
+}
+
+.sync-button.syncing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sync-button.error {
+  color: #d32f2f;
+}
+
+/* 新建下拉菜单 - 匹配桌面版 */
+.new-item-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 150px;
+  background: var(--material-surface);
+  border: 1px solid var(--material-divider);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  padding: 4px 0;
+  margin-top: 2px;
+}
+
+.new-item-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: var(--material-text-primary);
+  font-size: 13px;
+}
+
+.new-item-option:hover {
+  background: var(--material-hover);
+}
+
+.new-item-icon {
+  font-size: 16px;
+}
+
+.new-item-label {
+  font-size: 13px;
+}
+
+/* 中间搜索区域 - 匹配桌面版 */
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  max-width: 600px;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  background: var(--material-surface);
+  border: 1px solid var(--material-divider);
+  border-radius: 4px;
+  padding: 0 8px;
+  height: 28px;
+  min-width: 200px;
+}
+
+.search-container:focus-within {
+  border-color: var(--material-primary);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.search-icon {
+  font-size: 14px;
+  opacity: 0.5;
+  margin-right: 4px;
+  color: var(--material-text-secondary);
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--material-text-primary);
+}
+
+.search-input::placeholder {
+  color: var(--material-text-secondary);
+}
+
+.search-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+  padding: 0 4px;
+  transition: opacity 0.2s;
+  color: var(--material-text-secondary);
+}
+
+.search-clear:hover {
+  opacity: 1;
+}
+
+/* 右侧操作按钮 - 匹配桌面版 */
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  color: var(--material-text-secondary);
+}
+
+.sync-status:hover {
+  background: var(--material-hover);
+}
+
+.sync-indicator {
+  font-size: 14px;
+}
+
+.sync-indicator.syncing {
+  animation: spin 1s linear infinite;
+}
+
+.sync-indicator.error {
+  color: #d32f2f;
+}
+
+.sync-time {
+  font-size: 11px;
+  color: var(--material-text-secondary);
+}
+
+/* 高级搜索面板 - 匹配桌面版 */
+.advanced-search-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--material-surface);
+  border-bottom: 1px solid var(--material-divider);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  padding: 12px;
+}
+
+.advanced-search-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.advanced-search-content h3 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--material-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.search-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.search-condition {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.condition-field,
+.condition-operator {
+  padding: 4px 8px;
+  border: 1px solid var(--material-divider);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--material-surface);
+  color: var(--material-text-primary);
+}
+
+.condition-value {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--material-divider);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.condition-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--material-text-secondary);
+  padding: 4px;
+}
+
+.condition-remove:hover {
+  color: #d32f2f;
+}
+
+.search-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 响应式设计 - 匹配桌面版 */
+@media (max-width: 768px) {
+  .zotero-toolbar-complete {
+    flex-wrap: wrap;
+    padding: 4px 6px;
+    height: auto;
+    min-height: var(--height-toolbar);
+  }
+
+  .toolbar-left,
+  .toolbar-right {
+    gap: 2px;
+  }
+
+  .toolbar-center {
+    order: 3;
+    width: 100%;
+    max-width: none;
+    margin-top: 4px;
+  }
+
+  .search-container {
+    height: 26px;
+  }
+
+  .new-item-dropdown {
+    min-width: 120px;
+  }
+}

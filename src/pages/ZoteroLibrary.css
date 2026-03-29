@@ -1,0 +1,327 @@
+/**
+ * Paper-Master - Main Interface Styles
+ * Modern reference management UI
+ */
+
+:root {
+  /* Material Design 颜色变量 - 匹配桌面版 */
+  --material-toolbar: #ffffff;
+  --material-background: #f5f5f5;
+  --material-surface: #ffffff;
+  --material-primary: #667eea;
+  --material-primary-variant: #764ba2;
+  --material-secondary: #26a69a;
+  --material-text-primary: #212121;
+  --material-text-secondary: #757575;
+  --material-divider: #e0e0e0;
+  --material-border: #d0d0d0;
+  --material-panedivider: #c0c0c0;
+  --material-hover: rgba(0, 0, 0, 0.04);
+  --material-selected: rgba(102, 126, 234, 0.1);
+
+  /* 尺寸变量 */
+  --height-toolbar: 40px;
+  --height-panel-header: 32px;
+  --width-collections-pane: 200px;
+  --width-item-pane: 300px;
+  --min-width-items-pane: 280px;
+}
+
+.zotero-library {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--material-background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 移除旧的样式，使用新组件的样式 */
+
+/* 主内容区域 - 三栏布局 */
+.zotero-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+  background: var(--material-background);
+}
+
+/* 左侧集合面板 - 完全匹配Zotero桌面版 */
+.zotero-collections-panel {
+  width: 220px;
+  min-width: 180px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-right: 1px solid #c0c0c0;
+  overflow: hidden;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.zotero-collections-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+  border-bottom: 1px solid #dee2e6;
+  min-height: 32px;
+  height: 32px;
+}
+
+.zotero-collections-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #495057;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.zotero-collections-tree {
+  flex: 1;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+/* 分割条 - 匹配桌面版样式 */
+.zotero-splitter {
+  width: 1px;
+  background: var(--material-panedivider);
+  cursor: col-resize;
+  transition: background 0.2s, width 0.2s;
+  position: relative;
+}
+
+.zotero-splitter:hover {
+  background: var(--material-primary);
+  width: 3px;
+}
+
+.zotero-splitter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2px;
+  right: -2px;
+  height: 100%;
+}
+
+/* 中间条目面板 - 匹配桌面版 */
+.zotero-items-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--material-surface);
+  overflow: hidden;
+  min-width: var(--min-width-items-pane);
+}
+
+.zotero-items-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--material-toolbar);
+  border-bottom: 1px solid var(--material-divider);
+  min-height: var(--height-panel-header);
+  height: var(--height-panel-header);
+}
+
+.zotero-items-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--material-text-secondary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.zotero-items-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.zotero-items-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+  background: var(--material-surface);
+}
+
+/* 右侧详情面板 - 匹配桌面版 */
+.zotero-detail-panel {
+  width: var(--width-item-pane);
+  min-width: 250px;
+  max-width: 500px;
+  background: var(--material-surface);
+  border-left: 1px solid var(--material-panedivider);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 错误提示 - Material Design 风格 */
+.zotero-error {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  border-radius: 4px;
+  margin: 8px 16px;
+  color: #c62828;
+  font-size: 13px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 按钮样式 - 匹配桌面版 */
+.zotero-library button {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .zotero-content {
+    flex-direction: column;
+  }
+
+  .zotero-detail-panel {
+    width: 100%;
+    height: 50%;
+    border-top: 1px solid var(--material-panedivider);
+    border-left: none;
+  }
+
+  .zotero-collections-panel {
+    width: 100%;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid var(--material-panedivider);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .zotero-content {
+    flex-direction: column;
+  }
+
+  .zotero-detail-panel {
+    width: 100%;
+    height: 50%;
+    border-top: 2px solid #e0e0e0;
+  }
+}
+
+@media (max-width: 768px) {
+  .zotero-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .zotero-toolbar-left {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .zotero-toolbar-right {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .zotero-stats {
+    justify-content: space-around;
+  }
+}
+
+/* 拖拽上传样式 */
+.zotero-items-content {
+  position: relative;
+}
+
+.zotero-items-content.drag-active {
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+.drag-drop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(102, 126, 234, 0.1);
+  border: 3px dashed var(--material-primary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.drag-drop-message {
+  text-align: center;
+  color: var(--material-primary);
+}
+
+.drag-drop-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.drag-drop-message p {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 8px 0;
+}
+
+.drag-drop-hint {
+  font-size: 14px;
+  color: var(--material-text-secondary) !important;
+}
+
+.processing-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 101;
+}
+
+.processing-message {
+  text-align: center;
+}
+
+.processing-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--material-divider);
+  border-top: 4px solid var(--material-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.processing-message p {
+  font-size: 16px;
+  color: var(--material-text-primary);
+  margin: 0;
+}

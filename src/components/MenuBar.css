@@ -1,0 +1,155 @@
+/*
+ * MenuBar Styles
+ * 完全匹配Zotero桌面版菜单栏样式
+ */
+
+.menu-bar {
+  display: flex;
+  background: var(--material-toolbar);
+  border-bottom: 1px solid var(--material-divider);
+  padding: 0 4px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 13px;
+  user-select: none;
+  height: 28px;
+  min-height: 28px;
+  align-items: center;
+}
+
+.menu-item-wrapper {
+  position: relative;
+}
+
+.menu-title {
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+  font-weight: 500;
+  color: var(--material-text-primary);
+  font-size: 13px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.menu-title:hover {
+  background: var(--material-hover);
+}
+
+.menu-item-wrapper.active .menu-title {
+  background: var(--material-selected);
+  color: var(--material-primary);
+}
+
+/* 下拉菜单 - 匹配桌面版 */
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 200px;
+  background: var(--material-surface);
+  border: 1px solid var(--material-divider);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  padding: 4px 0;
+  margin-top: 2px;
+  max-height: 400px;
+  overflow-y: auto;
+  animation: menuFadeIn 0.15s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 菜单项 - 匹配桌面版 */
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 13px;
+  color: var(--material-text-primary);
+  min-height: 28px;
+}
+
+.menu-item:hover:not(.disabled) {
+  background: var(--material-hover);
+  color: var(--material-text-primary);
+}
+
+.menu-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--material-text-secondary);
+}
+
+.menu-item-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-item-icon {
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+.menu-item-label {
+  flex: 1;
+}
+
+.menu-item-shortcut {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-left: 16px;
+  color: var(--material-text-secondary);
+}
+
+.menu-item:hover .menu-item-shortcut {
+  opacity: 0.8;
+}
+
+/* 分隔线 - 匹配桌面版 */
+.menu-separator {
+  height: 1px;
+  background: var(--material-divider);
+  margin: 4px 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .menu-bar {
+    font-size: 12px;
+    padding: 0 4px;
+  }
+
+  .menu-title {
+    padding: 4px 8px;
+  }
+
+  .menu-dropdown {
+    min-width: 160px;
+  }
+
+  .menu-item {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .menu-item-shortcut {
+    display: none;
+  }
+}

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重置Zotero数据库</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            opacity: 0.9;
+        }
+        .button.secondary {
+            background: #6c757d;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗄️ 重置Zotero数据库</h1>
+
+        <p>如果您遇到数据库错误，可以使用下面的按钮重置数据库。</p>
+
+        <div id="status" class="status"></div>
+
+        <button class="button" onclick="resetDatabase()">🔄 重置数据库</button>
+        <button class="button secondary" onclick="goBack()">← 返回应用</button>
+
+        <div style="margin-top: 30px;">
+            <h3>手动重置步骤：</h3>
+            <ol>
+                <li>按 <kbd>F12</kbd> 打开开发者工具</li>
+                <li>切换到 <strong>Console</strong> 标签</li>
+                <li>复制粘贴以下命令：</li>
+            </ol>
+            <code>localStorage.clear(); location.reload();</code>
+        </div>
+    </div>
+
+    <script>
+        function resetDatabase() {
+            try {
+                localStorage.clear();
+                showStatus('✅ 数据库已成功重置！正在返回应用...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } catch (error) {
+                showStatus('❌ 重置失败: ' + error.message, 'error');
+            }
+        }
+
+        function goBack() {
+            window.location.href = '/';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + type;
+            statusDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
