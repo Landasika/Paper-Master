@@ -8,6 +8,9 @@ dist/
 # Logs
 *.log
 npm-debug.log*
+.backend-server.log
+.dev-server.log
+.dev-server.pid
 
 # Runtime data
 *.pid
@@ -18,10 +21,12 @@ npm-debug.log*
 *.db
 *.db-shm
 *.db-wal
+zotero-data.db
 
 # Uploaded files
 public/uploads/*
 !public/uploads/.gitkeep
+!public/uploads/pdf-*
 
 # IDE
 .vscode/
@@ -37,7 +42,3 @@ Thumbs.db
 # Environment
 .env
 .env.local
-
-# Server
-.dev-server.pid
-.backend-server.pid
