@@ -4,7 +4,6 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import './ContextMenu.css';
 
 export interface MenuItem {
   key: string;

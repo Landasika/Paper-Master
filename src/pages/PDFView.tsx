@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDataStore } from '../hooks/useDataStore';
 import { Modal } from '../components/modals/Modal';
-import './PDFView.css';
 
 interface PDFViewProps {
   attachmentKey: string;

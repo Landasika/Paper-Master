@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useDataStore } from '../hooks/useDataStore';
 import { NoteEditor } from '../components/NoteEditor';
 import { Item } from '../core/data/Item';
-import './NoteView.css';
 
 interface NoteViewProps {
   noteKey?: string;

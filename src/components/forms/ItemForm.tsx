@@ -5,7 +5,6 @@ import { CreatorEditor } from './CreatorEditor';
 import type { Creator } from './CreatorEditor';
 import { getFieldsForItemType, getItemTypeOptions } from '../../config/itemTypes';
 import type { Item } from '../../core/data/Item';
-import './ItemForm.css';
 
 interface ItemFormProps {
   item?: Partial<Item>;

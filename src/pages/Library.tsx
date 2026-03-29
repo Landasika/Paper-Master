@@ -7,7 +7,6 @@ import { PDFViewModal } from './PDFView';
 import { NoteView } from './NoteView';
 import { loadSampleData } from '../utils/sampleData';
 import type { Item } from '../core/data/Item';
-import './Library.css';
 
 // PDF 元数据解析函数
 function parseTitleFromFilename(filename: string): string {

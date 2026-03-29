@@ -3,7 +3,6 @@ import { useDataStore } from '../hooks/useDataStore';
 import { ItemForm } from '../components/forms/ItemForm';
 import { Button } from '../components/Button';
 import { Item } from '../core/data/Item';
-import './ItemEditor.css';
 
 interface ItemEditorProps {
   itemKey?: string;

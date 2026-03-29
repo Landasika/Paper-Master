@@ -6,7 +6,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import './NoteEditor.css';
 
 interface NoteEditorProps {
   content?: string;
