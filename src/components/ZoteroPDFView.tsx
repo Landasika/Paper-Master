@@ -4,13 +4,18 @@ import { useDataStore } from '../hooks/useDataStore';
 interface ZoteroPDFViewProps {
   attachmentKey: string;
   onClose?: () => void;
+  onTextSelection?: (selection: {
+    text: string;
+    x: number;
+    y: number;
+  }) => void;
 }
 
 /**
  * Zotero PDF Reader 桥接组件
  * 使用 iframe 加载 Zotero Reader，通过 postMessage 通信
  */
-export const ZoteroPDFView: React.FC<ZoteroPDFViewProps> = ({ attachmentKey, onClose }) => {
+export const ZoteroPDFView: React.FC<ZoteroPDFViewProps> = ({ attachmentKey, onClose, onTextSelection }) => {
   const dataStore = useDataStore();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [attachment, setAttachment] = useState<any>(null);
@@ -81,6 +86,18 @@ export const ZoteroPDFView: React.FC<ZoteroPDFViewProps> = ({ attachmentKey, onC
         case 'onSetZoom':
           // 设置缩放
           console.log('[ZoteroPDFView] 设置缩放:', event.data.zoom);
+          break;
+        case 'onTextSelection':
+          // 文本选择翻译
+          console.log('[ZoteroPDFView] 文本选择:', event.data);
+          if (onTextSelection && event.data.text) {
+            const iframeRect = iframeRef.current?.getBoundingClientRect();
+            onTextSelection({
+              text: event.data.text,
+              x: iframeRect ? iframeRect.left + event.data.x : event.data.x,
+              y: iframeRect ? iframeRect.top + event.data.y : event.data.y
+            });
+          }
           break;
         default:
           console.log('[ZoteroPDFView] 未处理的消息类型:', event.data.type);

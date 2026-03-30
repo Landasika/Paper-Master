@@ -1,0 +1,55 @@
+/* 标签容器 */
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+/* 单个标签 */
+.item-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  user-select: none;
+  line-height: 1.4;
+}
+
+.item-tag:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.item-tag:active {
+  transform: scale(0.98);
+}
+
+/* 更多标签指示器 */
+.item-tag-more {
+  padding: 2px 6px;
+  color: #666;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.item-tag-more:hover {
+  color: #333;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .item-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}

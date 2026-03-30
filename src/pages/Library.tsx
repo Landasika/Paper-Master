@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useZoteroData, useDataStore } from '../hooks/useDataStore';
+import { useTranslationSettings } from '../hooks/useTranslationSettings';
+import { useNoteTree } from '../hooks/useNoteTree';
 import { Button } from '../components/Button';
 import { Modal } from '../components/modals/Modal';
+import { ExpandableItemRow } from '../components/ExpandableItemRow';
 import { ItemEditor } from './ItemEditor';
 import { NoteView } from './NoteView';
+import { TranslationSettingsPage } from './TranslationSettings';
 import { loadSampleData } from '../utils/sampleData';
+import { translationService } from '../services/translation';
 import type { Item } from '../core/data/Item';
 import './Library.css';
 
@@ -139,12 +144,15 @@ export function Library() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [noteViewOpen, setNoteViewOpen] = useState(false);
+  const [translationSettingsOpen, setTranslationSettingsOpen] = useState(false);
   const [editingItemKey, setEditingItemKey] = useState<string | undefined>();
   const [viewingNoteKey, setViewingNoteKey] = useState<string | undefined>();
   const [parentItemForNote, setParentItemForNote] = useState<string | undefined>();
   const [itemType, setItemType] = useState('book');
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   // 多标签PDF管理（保留功能）
   // @ts-expect-error - 保留用于未来多标签功能
@@ -155,9 +163,25 @@ export function Library() {
   }>>([]);
   const [activePDFKey, setActivePDFKey] = useState<string | undefined>();
 
+  // 翻译tooltip状态（暂时未使用，保留用于未来功能）
+  // const [translationTooltip, setTranslationTooltip] = useState<{
+  //   visible: boolean;
+  //   x: number;
+  //   y: number;
+  //   text: string;
+  // }>({ visible: false, x: 0, y: 0, text: '' });
+
   // 纯离线模式：只使用 IndexedDB
   const dataStore = useDataStore();
   const { items, collections, tags, loading, error, reload } = useZoteroData(dataStore);
+
+  // 翻译设置
+  const { settings: translationSettings } = useTranslationSettings();
+
+  // 翻译设置改变时更新翻译服务
+  useEffect(() => {
+    translationService.updateSettings(translationSettings);
+  }, [translationSettings]);
 
   // 首次加载：如果没有数据，加载示例数据
   useEffect(() => {
@@ -532,7 +556,8 @@ export function Library() {
               url = `http://localhost:3001/uploads/${foundAttachment.filename}`;
             }
             if (url) {
-              const title = foundAttachment.title || foundAttachment.filename || 'PDF';
+              // 修复：使用item的title（论文题目）而不是attachment的title
+              const title = typedItem.title || foundAttachment.filename || 'PDF';
               // 打开干净的 reader.html，不带参数
               const readerUrl = `/zotero-reader/reader.html`;
               const newWindow = window.open(readerUrl, '_blank');
@@ -560,6 +585,27 @@ export function Library() {
     }
   };
 
+  // 处理文本选择事件（暂时未使用，保留用于未来功能）
+  // const handleTextSelection = (selection: { text: string; x: number; y: number }) => {
+  //   console.log('[Library] 处理文本选择:', selection);
+  //
+  //   const padding = 20;
+  //   const maxX = window.innerWidth - padding - 300;
+  //   const maxY = window.innerHeight - padding - 200;
+  //
+  //   setTranslationTooltip({
+  //     visible: true,
+  //     x: Math.min(Math.max(selection.x, padding), maxX),
+  //     y: Math.min(Math.max(selection.y, padding), maxY),
+  //     text: selection.text
+  //   });
+  // };
+
+  // 关闭翻译tooltip（暂时未使用，保留用于未来功能）
+  // const handleCloseTranslationTooltip = () => {
+  //   setTranslationTooltip(prev => ({ ...prev, visible: false }));
+  // };
+
   return (
     <div
       className={`library ${dragActive ? 'drag-active' : ''}`}
@@ -571,6 +617,14 @@ export function Library() {
       <header className="library-header">
         <h1>Paper-Master</h1>
         <div className="library-actions">
+          <Button
+            variant="ghost"
+            size="small"
+            onClick={() => setTranslationSettingsOpen(true)}
+            title="翻译设置"
+          >
+            ⚙️ 翻译
+          </Button>
           <Button
             variant="ghost"
             size="small"
@@ -605,8 +659,16 @@ export function Library() {
 
       <div className="library-content">
         <aside className="library-sidebar">
-          <CollectionsPanel collections={collections} />
-          <TagsPanel tags={tags} />
+          <CollectionsPanel
+            collections={collections}
+            selectedCollection={selectedCollection}
+            onSelectCollection={setSelectedCollection}
+          />
+          <TagsPanel
+            tags={tags}
+            selectedTag={selectedTag}
+            onSelectTag={setSelectedTag}
+          />
         </aside>
 
         <main className="library-main">
@@ -643,6 +705,8 @@ export function Library() {
           {!loading && !error && (
             <ItemsPanel
               items={items}
+              selectedCollection={selectedCollection}
+              selectedTag={selectedTag}
               onEditItem={handleEditItem}
               onOpenPDF={openPDFInNewTab}
               onEditNote={handleEditNote}
@@ -751,6 +815,18 @@ export function Library() {
               onSave={handleNoteSave}
             />
           </Modal>
+
+          {/* Translation Settings Modal */}
+          <Modal
+            isOpen={translationSettingsOpen}
+            onClose={() => setTranslationSettingsOpen(false)}
+            title="翻译设置"
+            size="medium"
+          >
+            <TranslationSettingsPage
+              onClose={() => setTranslationSettingsOpen(false)}
+            />
+          </Modal>
         </main>
       </div>
     </div>
@@ -823,7 +899,15 @@ function SettingsPanel({ apiKey, onSave }: { apiKey: string; onSave: (key: strin
   );
 }
 
-function CollectionsPanel({ collections }: { collections: any[] }) {
+function CollectionsPanel({
+  collections,
+  selectedCollection,
+  onSelectCollection
+}: {
+  collections: any[];
+  selectedCollection: string | null;
+  onSelectCollection: (key: string | null) => void;
+}) {
   return (
     <div className="collections-panel">
       <h3>Collections</h3>
@@ -832,7 +916,11 @@ function CollectionsPanel({ collections }: { collections: any[] }) {
       ) : (
         <ul className="collection-list">
           {collections.map((collection) => (
-            <li key={collection.key} className="collection-item">
+            <li
+              key={collection.key}
+              className={`collection-item ${selectedCollection === collection.key ? 'active' : ''}`}
+              onClick={() => onSelectCollection(selectedCollection === collection.key ? null : collection.key)}
+            >
               📁 {collection.name}
             </li>
           ))}
@@ -842,7 +930,15 @@ function CollectionsPanel({ collections }: { collections: any[] }) {
   );
 }
 
-function TagsPanel({ tags }: { tags: any[] }) {
+function TagsPanel({
+  tags,
+  selectedTag,
+  onSelectTag
+}: {
+  tags: any[];
+  selectedTag: string | null;
+  onSelectTag: (tag: string | null) => void;
+}) {
   return (
     <div className="tags-panel">
       <h3>Tags</h3>
@@ -850,11 +946,18 @@ function TagsPanel({ tags }: { tags: any[] }) {
         <p className="empty-state">No tags yet</p>
       ) : (
         <div className="tag-cloud">
-          {tags.slice(0, 50).map((tag, index) => (
-            <span key={index} className="tag">
-              {tag.tag || tag}
-            </span>
-          ))}
+          {tags.slice(0, 50).map((tag, index) => {
+            const tagValue = tag.tag || tag;
+            return (
+              <span
+                key={index}
+                className={`tag ${selectedTag === tagValue ? 'active' : ''}`}
+                onClick={() => onSelectTag(selectedTag === tagValue ? null : tagValue)}
+              >
+                {tagValue}
+              </span>
+            );
+          })}
         </div>
       )}
     </div>
@@ -938,6 +1041,8 @@ function OpenPDFButton({ attachmentKey }: { attachmentKey: string }) {
 
 function ItemsPanel({
   items,
+  selectedCollection,
+  selectedTag,
   onEditItem,
   // @ts-expect-error - 保留用于未来功能
   onEditNote,
@@ -946,6 +1051,8 @@ function ItemsPanel({
   onOpenPDF
 }: {
   items: any[];
+  selectedCollection: string | null;
+  selectedTag: string | null;
   onEditItem: (key: string) => void;
   onEditNote: (key: string) => void;
   onCreateNote: (key?: string) => void;
@@ -954,15 +1061,35 @@ function ItemsPanel({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 使用笔记树hook
+  const {
+    toggleExpand,
+    isExpanded
+  } = useNoteTree(items);
+
+
   const filteredItems = items.filter(item => {
+    // 搜索筛选
     const query = searchQuery.toLowerCase();
     const title = item.title?.toLowerCase() || '';
     const creators = (item.creators || [])
       .map((c: any) => `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase())
       .join(' ');
+    const matchesSearch = title.includes(query) || creators.includes(query);
 
-    return title.includes(query) || creators.includes(query);
+    // Collection 筛选
+    const matchesCollection = !selectedCollection || item.collections?.some((c: any) => c.key === selectedCollection);
+
+    // Tag 筛选
+    const matchesTag = !selectedTag || item.tags?.some((t: any) => (t.tag || t) === selectedTag);
+
+    return matchesSearch && matchesCollection && matchesTag;
   });
+  // 使用笔记树重新构建扁平列表
+  const { flatTree: displayTree } = useNoteTree(filteredItems);
+
+
+
 
   return (
     <div className="items-panel">
@@ -974,7 +1101,7 @@ function ItemsPanel({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="search-input"
         />
-        <span className="items-count">{filteredItems.length} items</span>
+        <span className="items-count">{displayTree.length} items</span>
       </div>
 
       {filteredItems.length === 0 ? (
@@ -983,7 +1110,7 @@ function ItemsPanel({
         </div>
       ) : (
         <div className="items-list">
-          {filteredItems.map((item) => {
+          {displayTree.map(({ item, level, hasChildren }) => {
             // 查找 PDF 附件
             const pdfAttachment = item.attachments?.find((att: any) =>
               att.mimeType === 'application/pdf' ||
@@ -991,87 +1118,25 @@ function ItemsPanel({
               att.filename?.endsWith('.pdf')
             );
 
+            const handleOpenPDF = () => {
+              if (pdfAttachment) {
+                onOpenPDF(pdfAttachment.key);
+              }
+            };
+
             return (
-              <div
+              <ExpandableItemRow
                 key={item.key}
-                className={`item-row ${item.itemType === 'note' ? 'item-row-note' : ''}`}
-                onClick={() => onEditItem(item.key)}
-                title="单击编辑详情"
-              >
-              {/* 类型图标 */}
-              <div className="item-row-type">
-                {item.itemType === 'book' ? '📕' :
-                 item.itemType === 'journalArticle' ? '📄' :
-                 item.itemType === 'note' ? '📝' : '📄'}
-              </div>
-
-              {/* 条目内容 */}
-              <div className="item-row-content">
-                <div className="item-row-title">
-                  {item.itemType === 'note' ?
-                    (item.note?.replace(/<[^>]+>/g, '').substring(0, 100) || 'Empty Note') :
-                    (item.title || 'Untitled')
-                  }
-                </div>
-
-                <div className="item-row-meta">
-                  {item.creators && item.creators.length > 0 && (
-                    <span className="item-row-authors">
-                      {item.creators.slice(0, 3).map((c: any) =>
-                        `${c.firstName || ''} ${c.lastName || ''}`.trim()
-                      ).join(', ')}
-                      {item.creators.length > 3 && ' et al.'}
-                    </span>
-                  )}
-
-                  {item.publicationTitle && (
-                    <span className="item-row-publication">{item.publicationTitle}</span>
-                  )}
-
-                  {item.date && (
-                    <span className="item-row-date">{item.date}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* 操作按钮 */}
-              <div className="item-row-actions">
-                <button
-                  className="item-row-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCreateNote(item.key);
-                  }}
-                  title="添加笔记"
-                >
-                  📝
-                </button>
-                {pdfAttachment && (
-                  <button
-                    className="item-row-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenPDF(pdfAttachment.key);
-                    }}
-                    title="打开 PDF"
-                  >
-                    📖
-                  </button>
-                )}
-                <button
-                  className="item-row-btn item-row-btn-danger"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm(`确定要删除 "${item.title || 'this item'}" 吗？`)) {
-                      onDeleteItem(item.key);
-                    }
-                  }}
-                  title="删除"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
+                item={item}
+                level={level}
+                hasChildren={hasChildren}
+                isExpanded={isExpanded(item.key)}
+                onToggle={toggleExpand}
+                onEdit={onEditItem}
+                onAddNote={onCreateNote}
+                onOpenPDF={handleOpenPDF}
+                onDelete={onDeleteItem}
+              />
             );
           })}
         </div>

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" dir="ltr">
+<html lang="en-US" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -263,6 +263,27 @@
                 console.log('[Zotero Reader] 视图状态:', state);
               },
 
+              onTextSelection: function(params) {
+                try {
+                  const selection = window.getSelection();
+                  if (!selection || selection.rangeCount === 0) return;
+
+                  const selectedText = selection.toString().trim();
+                  if (!selectedText) return;
+
+                  const range = selection.getRangeAt(0);
+                  const rect = range.getBoundingClientRect();
+
+                  console.log('[Zotero Reader] 📝 文本选择:', selectedText);
+
+                  // 直接显示翻译tooltip（不需要postMessage，因为在新标签页）
+                  // 在选择区域下方显示tooltip
+                  showTranslationTooltip(selectedText, rect.left, rect.bottom + 10);
+                } catch (error) {
+                  console.error('[Zotero Reader] 文本选择错误:', error);
+                }
+              },
+
               // 本地化文件
               ftl: ftlFiles
             });
@@ -299,6 +320,286 @@
         }, 2000);
       });
     }
+  </script>
+
+  <!-- 翻译Tooltip -->
+  <div id="translation-tooltip" style="
+    position: fixed;
+    display: none;
+    z-index: 999999;
+    min-width: 300px;
+    max-width: 420px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: white;
+    animation: tooltipSlideIn 0.3s ease-out;
+  ">
+    <div style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    ">
+      <span style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px;">
+        翻译
+      </span>
+      <button onclick="closeTranslationTooltip()" style="
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.2s;
+      " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+         onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+        ×
+      </button>
+    </div>
+    <div id="tooltip-original-text" style="
+      font-size: 13px;
+      opacity: 0.8;
+      margin-bottom: 10px;
+      line-height: 1.5;
+      max-height: 100px;
+      overflow-y: auto;
+    "></div>
+    <div id="tooltip-translated-text" style="
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.6;
+      min-height: 40px;
+    "></div>
+    <div id="tooltip-loading" style="
+      display: none;
+      text-align: center;
+      padding: 20px;
+    ">
+      <div style="
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      "></div>
+      <p style="margin: 10px 0 0 0; font-size: 13px; opacity: 0.9;">翻译中...</p>
+    </div>
+    <div id="tooltip-error" style="
+      display: none;
+      background: rgba(220, 53, 69, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+    ">
+      <p style="margin: 0; font-size: 13px;">翻译失败，请重试</p>
+      <button onclick="retryTranslation()" style="
+        margin-top: 8px;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.2s;
+      " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+         onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+        重试
+      </button>
+    </div>
+    <button onclick="copyTranslation()" style="
+      width: 100%;
+      margin-top: 12px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+       onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+      <span>📋</span> 复制译文
+    </button>
+  </div>
+
+  <style>
+    @keyframes tooltipSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+
+  <script>
+    let currentSelectedText = '';
+    let currentTooltipPosition = { x: 0, y: 0 };
+
+    // 显示tooltip
+    function showTranslationTooltip(text, x, y) {
+      console.log('[TranslationTooltip] 显示翻译tooltip:', text);
+
+      currentSelectedText = text;
+      currentTooltipPosition = { x, y };
+
+      const tooltip = document.getElementById('translation-tooltip');
+      const originalTextEl = document.getElementById('tooltip-original-text');
+      const translatedTextEl = document.getElementById('tooltip-translated-text');
+      const loadingEl = document.getElementById('tooltip-loading');
+      const errorEl = document.getElementById('tooltip-error');
+
+      // 设置原文本
+      originalTextEl.textContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+
+      // 显示tooltip
+      tooltip.style.display = 'block';
+      tooltip.style.left = Math.max(20, Math.min(x, window.innerWidth - 440)) + 'px';
+      tooltip.style.top = Math.max(20, Math.min(y, window.innerHeight - 300)) + 'px';
+
+      // 显示加载状态
+      translatedTextEl.style.display = 'none';
+      loadingEl.style.display = 'block';
+      errorEl.style.display = 'none';
+
+      // 调用翻译API
+      translateText(text);
+    }
+
+    // 翻译文本
+    async function translateText(text) {
+      const translatedTextEl = document.getElementById('tooltip-translated-text');
+      const loadingEl = document.getElementById('tooltip-loading');
+      const errorEl = document.getElementById('tooltip-error');
+
+      try {
+        // 检测语言（简单判断是否包含中文字符）
+        const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+        const sourceLang = hasChinese ? 'zh' : 'en';
+        const targetLang = hasChinese ? 'en' : 'zh';
+
+        // 使用LibreTranslate API
+        const response = await fetch('https://libretranslate.com/translate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            q: text,
+            source: sourceLang,
+            target: targetLang,
+            format: 'text'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Translation API error');
+        }
+
+        const data = await response.json();
+        const translatedText = data.translatedText;
+
+        // 显示翻译结果
+        translatedTextEl.textContent = translatedText;
+        translatedTextEl.style.display = 'block';
+        loadingEl.style.display = 'none';
+
+      } catch (error) {
+        console.error('[TranslationTooltip] 翻译失败:', error);
+
+        // 尝试备用API（MyMemory）
+        try {
+          const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+          const langPair = hasChinese ? 'zh|en' : 'en|zh';
+
+          const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`);
+          const data = await response.json();
+
+          if (data.responseStatus === 200 && data.responseData.translatedText) {
+            translatedTextEl.textContent = data.responseData.translatedText;
+            translatedTextEl.style.display = 'block';
+            loadingEl.style.display = 'none';
+          } else {
+            throw new Error('Backup API failed');
+          }
+        } catch (backupError) {
+          console.error('[TranslationTooltip] 备用API也失败:', backupError);
+          loadingEl.style.display = 'none';
+          errorEl.style.display = 'block';
+        }
+      }
+    }
+
+    // 关闭tooltip
+    function closeTranslationTooltip() {
+      const tooltip = document.getElementById('translation-tooltip');
+      tooltip.style.display = 'none';
+      window.getSelection()?.removeAllRanges();
+    }
+
+    // 复制译文
+    function copyTranslation() {
+      const translatedTextEl = document.getElementById('tooltip-translated-text');
+      const text = translatedTextEl.textContent;
+
+      if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+          // 显示复制成功提示
+          const button = event.target;
+          const originalText = button.innerHTML;
+          button.innerHTML = '<span>✅</span> 已复制';
+          setTimeout(() => {
+            button.innerHTML = originalText;
+          }, 2000);
+        }).catch(err => {
+          console.error('[TranslationTooltip] 复制失败:', err);
+        });
+      }
+    }
+
+    // 重试翻译
+    function retryTranslation() {
+      if (currentSelectedText) {
+        translateText(currentSelectedText);
+      }
+    }
+
+    // 点击外部关闭tooltip
+    document.addEventListener('click', function(event) {
+      const tooltip = document.getElementById('translation-tooltip');
+      if (tooltip.style.display === 'block' && !tooltip.contains(event.target)) {
+        closeTranslationTooltip();
+      }
+    });
+
+    // ESC键关闭tooltip
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeTranslationTooltip();
+      }
+    });
   </script>
 </body>
 </html>

@@ -1,0 +1,170 @@
+/* 可展开条目行样式 */
+.item-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  gap: 8px;
+}
+
+.item-row:hover {
+  background-color: #f8f9fa;
+}
+
+.item-row-child {
+  background-color: #fafafa;
+}
+
+.item-row-child:hover {
+  background-color: #f0f0f0;
+}
+
+.item-row-note {
+  background-color: #fffbf0;
+}
+
+.item-row-note:hover {
+  background-color: #fff5e0;
+}
+
+/* 展开/折叠图标 */
+.item-row-expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.expand-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: transform 0.2s, color 0.2s;
+  font-size: 10px;
+}
+
+.expand-icon:hover {
+  color: #333;
+}
+
+.expand-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.expand-spacer {
+  width: 16px;
+  display: inline-block;
+}
+
+/* 条目类型图标 */
+.item-row-type {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* 条目内容区域 */
+.item-row-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-row-title {
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.item-row-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.item-row-authors,
+.item-row-publication,
+.item-row-date {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 操作按钮 */
+.item-row-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.item-row:hover .item-row-actions {
+  opacity: 1;
+}
+
+.item-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.item-action-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: scale(1.1);
+}
+
+.item-action-btn.delete:hover {
+  background-color: #fee;
+  color: #c00;
+}
+
+/* 添加笔记区域 */
+.add-note-section {
+  padding: 6px 12px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.add-note-btn {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-note-btn:hover {
+  background-color: #2980b9;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .item-row-actions {
+    opacity: 1;
+  }
+
+  .item-row-meta {
+    font-size: 11px;
+    gap: 8px;
+  }
+}

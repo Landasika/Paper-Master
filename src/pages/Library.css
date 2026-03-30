@@ -237,6 +237,13 @@ body {
   transform: translateX(2px);
 }
 
+.collection-item.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-md);
+}
+
 .collection-item::before {
   content: '📁';
   font-size: 1.125rem;
@@ -270,6 +277,14 @@ body {
 }
 
 .tag:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+
+.tag.active {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
